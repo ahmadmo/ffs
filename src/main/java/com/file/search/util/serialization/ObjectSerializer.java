@@ -13,12 +13,12 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /**
  * @author ahmad
  */
-public final class ObjectSerializer<T extends Serializable> implements AutoCloseable {
+public final class ObjectSerializer<T> implements AutoCloseable {
 
     private volatile T value;
     private final String source;
     private final Class<T> type;
-    private final AtomicReferenceFieldUpdater<ObjectSerializer, Serializable> valueUpdater;
+    private final AtomicReferenceFieldUpdater<ObjectSerializer, Object> valueUpdater;
     private final boolean deleteOnClose;
     private final Kryo kryo = new Kryo();
 
@@ -41,7 +41,7 @@ public final class ObjectSerializer<T extends Serializable> implements AutoClose
         this.type = type;
         this.value = value;
         this.deleteOnClose = deleteOnClose;
-        valueUpdater = AtomicReferenceFieldUpdater.newUpdater(ObjectSerializer.class, Serializable.class, "value");
+        valueUpdater = AtomicReferenceFieldUpdater.newUpdater(ObjectSerializer.class, Object.class, "value");
         kryo.register(type);
     }
 
@@ -61,14 +61,20 @@ public final class ObjectSerializer<T extends Serializable> implements AutoClose
         valueUpdater.set(this, value);
     }
 
+    public <S> void register(Class<S> type) {
+        kryo.register(type);
+    }
+
+    public <S> void register(Class<S> type, int id) {
+        kryo.register(type, id);
+    }
+
     public <S> void register(Class<S> type, Serializer<S> serializer) {
         kryo.register(type, serializer);
     }
 
-    public T loadFromDisk() throws FileNotFoundException {
-        final T newValue = deserialize();
-        set(newValue);
-        return newValue;
+    public <S> void register(Class<S> type, Serializer<S> serializer, int id) {
+        kryo.register(type, serializer, id);
     }
 
     public void flushToDisk() throws FileNotFoundException {
@@ -79,22 +85,28 @@ public final class ObjectSerializer<T extends Serializable> implements AutoClose
         }
     }
 
-    private synchronized T deserialize() throws FileNotFoundException {
-        openInput();
-        return kryo.readObject(input, type);
+    public T loadFromDisk() throws FileNotFoundException {
+        final T newValue = deserialize();
+        set(newValue);
+        return newValue;
     }
 
     private synchronized void serialize(T t) throws FileNotFoundException {
         closeInput();
-        try (Output output = new Output(new FileOutputStream(source))) {
+        try (Output output = new Output(new BufferedOutputStream(new FileOutputStream(source)))) {
             kryo.writeObject(output, t);
         }
         openInput();
     }
 
+    private synchronized T deserialize() throws FileNotFoundException {
+        openInput();
+        return kryo.readObject(input, type);
+    }
+
     private void openInput() throws FileNotFoundException {
         if (input == null) {
-            input = new Input(new FileInputStream(source));
+            input = new Input(new BufferedInputStream(new FileInputStream(source)));
         }
     }
 
