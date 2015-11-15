@@ -33,7 +33,7 @@ public final class FileIndexSerializer {
     private FileIndexSerializer() {
     }
 
-    public static FileIndex deserializeIndex() {
+    public static FileIndexWrapper deserializeIndex() {
         final Preferences preferences = Preferences.userNodeForPackage(FileIndexSerializer.class);
         final String g_hash = preferences.get("g_hash", null);
         final String d_hash = preferences.get("d_hash", null);
@@ -45,9 +45,9 @@ public final class FileIndexSerializer {
                     d_serializer.register(IndexedFile.class, new IndexedFileSerializer());
                     System.out.print("\nloading index files ... ");
                     @SuppressWarnings("unchecked")
-                    final FileIndex fileIndex = new FileIndex(g_serializer.loadFromDisk(), d_serializer.loadFromDisk());
+                    final FileIndexWrapper index = new FileIndexWrapper(g_serializer.loadFromDisk(), d_serializer.loadFromDisk());
                     System.out.println("done.\n");
-                    return fileIndex;
+                    return index;
                 } catch (IOException ignored) {
                     ignored.printStackTrace();
                 }
@@ -56,7 +56,7 @@ public final class FileIndexSerializer {
         return null;
     }
 
-    public static void serializeIndex(final FileIndex index) {
+    public static void serializeIndex(final FileIndexWrapper index) {
         try (ObjectSerializer<ConcurrentHashMap> g_serializer = new ObjectSerializer<>(G_INDEX, ConcurrentHashMap.class, index.getFileGroups(), false);
              ObjectSerializer<ConcurrentHashMap> d_serializer = new ObjectSerializer<>(D_INDEX, ConcurrentHashMap.class, index.getDirs(), false)) {
             g_serializer.register(Path.class, new PathSerializer());

@@ -15,7 +15,7 @@ import java.util.function.Consumer;
  */
 public final class SearchProcess {
 
-    public static final int DEFAULT_PARALLELISM = Runtime.getRuntime().availableProcessors();
+    public static final int DEFAULT_PARALLELISM = Runtime.getRuntime().availableProcessors() * 2;
 
     private final Iterable<Path> dirs;
     private final Consumer<Path> action;

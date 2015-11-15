@@ -7,12 +7,12 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * @author ahmad
  */
-public final class FileIndex {
+public final class FileIndexWrapper {
 
     private final ConcurrentHashMap<String, Set<Path>> fileGroups;
     private final ConcurrentHashMap<IndexedFile, Set<IndexedFile>> dirs;
 
-    public FileIndex(ConcurrentHashMap<String, Set<Path>> fileGroups, ConcurrentHashMap<IndexedFile, Set<IndexedFile>> dirs) {
+    public FileIndexWrapper(ConcurrentHashMap<String, Set<Path>> fileGroups, ConcurrentHashMap<IndexedFile, Set<IndexedFile>> dirs) {
         this.fileGroups = fileGroups;
         this.dirs = dirs;
     }

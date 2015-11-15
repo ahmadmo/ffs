@@ -7,13 +7,10 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
-
-import static com.file.search.indexing.IndexedFile.index;
 
 /**
  * @author ahmad
@@ -37,21 +34,38 @@ public final class FileIndexer {
 
     private void init() {
         try {
-            final Iterable<Path> roots = FileSystems.getDefault().getRootDirectories();
-            Objects.requireNonNull(roots);
             if (!loadFromDisk()) {
-                fileGroups = new ConcurrentHashMap<>();
-                dirs = new ConcurrentHashMap<>();
-                System.out.print("\nwaiting for index job ... ");
-                new SearchProcess(roots, this::group).doProcess();
-                System.out.println("done.\n");
+                index(FileSystems.getDefault().getRootDirectories());
             }
             crawler.start();
         } catch (Throwable e) {
             System.err.println("index job failed. (due to : " + e.getCause() + ")\n");
+            e.printStackTrace();
             System.console().readLine();
             System.exit(1);
         }
+    }
+
+    public void index(Iterable<Path> roots) {
+        fileGroups = new ConcurrentHashMap<>();
+        dirs = new ConcurrentHashMap<>();
+        System.out.print("\nwaiting for index job ... ");
+        new SearchProcess(roots, this::group).doProcess();
+        System.out.println("done.\n");
+    }
+
+    public boolean loadFromDisk() {
+        final FileIndexWrapper index = FileIndexSerializer.deserializeIndex();
+        if (index != null) {
+            fileGroups = index.getFileGroups();
+            dirs = index.getDirs();
+            return true;
+        }
+        return false;
+    }
+
+    public void saveToDisk() {
+        FileIndexSerializer.serializeIndex(new FileIndexWrapper(fileGroups, dirs));
     }
 
     public void forEachGroup(BiConsumer<String, Set<Path>> action) {
@@ -71,11 +85,11 @@ public final class FileIndexer {
     }
 
     public Long getLastModified(Path path) {
-        return index(path).getLastModified();
+        return IndexedFile.index(path).getLastModified();
     }
 
     public void setLastModified(Path path) {
-        index(path, System.currentTimeMillis());
+        IndexedFile.index(path, System.currentTimeMillis());
     }
 
     public void group(Path file) {
@@ -96,13 +110,13 @@ public final class FileIndexer {
     }
 
     private void groupChildren(Path path) {
-        final IndexedFile indexedFile = index(path, System.currentTimeMillis());
+        final IndexedFile indexedFile = IndexedFile.index(path, System.currentTimeMillis());
         if (Files.isDirectory(path) && !dirs.containsKey(indexedFile)) {
             dirs.put(indexedFile, new SetFromMap<>());
         }
         final Path parent = path.getParent();
         if (parent != null) {
-            final IndexedFile p = index(parent);
+            final IndexedFile p = IndexedFile.index(parent);
             Set<IndexedFile> children = dirs.get(p);
             if (children == null) {
                 final Set<IndexedFile> ch = dirs.putIfAbsent(p, children = new SetFromMap<>());
@@ -129,9 +143,9 @@ public final class FileIndexer {
     private void removeChildren(Path path) {
         final Path parent = path.getParent();
         if (parent != null) {
-            final Set<IndexedFile> children = dirs.get(index(parent));
+            final Set<IndexedFile> children = dirs.get(IndexedFile.index(parent));
             if (children != null) {
-                children.remove(index(path));
+                children.remove(IndexedFile.index(path));
             }
         }
     }
@@ -157,20 +171,6 @@ public final class FileIndexer {
                 .filter(matcher::matchDirectory)
                 .sorted()
                 .collect(Collectors.toList());
-    }
-
-    public boolean loadFromDisk() {
-        final FileIndex index = FileIndexSerializer.deserializeIndex();
-        if (index != null) {
-            fileGroups = index.getFileGroups();
-            dirs = index.getDirs();
-            return true;
-        }
-        return false;
-    }
-
-    public void saveToDisk() {
-        FileIndexSerializer.serializeIndex(new FileIndex(fileGroups, dirs));
     }
 
 }
