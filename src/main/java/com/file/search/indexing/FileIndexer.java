@@ -6,22 +6,19 @@ import com.file.search.SearchProcess;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.file.search.indexing.IndexedFile.index;
-import static com.file.search.util.RegexUtils.escape;
 
 /**
  * @author ahmad
  */
 public final class FileIndexer {
-
-    private static final String PATTERN_FORMAT = "\\b(%s).*";
-    private static final String DIR_DELIMITER = "|";
 
     private final FileCrawler crawler;
 
@@ -42,22 +39,14 @@ public final class FileIndexer {
         try {
             final Iterable<Path> roots = FileSystems.getDefault().getRootDirectories();
             Objects.requireNonNull(roots);
-            final FileIndex index = FileIndexSerializer.deserializeIndex();
-            if (index == null) {
+            if (!loadFromDisk()) {
                 fileGroups = new ConcurrentHashMap<>();
                 dirs = new ConcurrentHashMap<>();
                 System.out.print("\nwaiting for index job ... ");
                 new SearchProcess(roots, this::group).doProcess();
                 System.out.println("done.\n");
-            } else {
-                fileGroups = index.getFileGroups();
-                dirs = index.getDirs();
             }
             crawler.start();
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                crawler.stop();
-                FileIndexSerializer.serializeIndex(new FileIndex(fileGroups, dirs));
-            }));
         } catch (Throwable e) {
             System.err.println("index job failed. (due to : " + e.getCause() + ")\n");
             System.console().readLine();
@@ -161,23 +150,27 @@ public final class FileIndexer {
         removeFile(dir.getPath());
     }
 
-    public List<String> find(FileMatcher matcher, List<Path> baseDirs) {
-        if (baseDirs == null || baseDirs.isEmpty()) {
-            return Collections.emptyList();
-        }
-        final StringJoiner j = new StringJoiner(DIR_DELIMITER);
-        for (Path dir : baseDirs) {
-            j.add(escape(dir.toString()));
-        }
-        final Pattern p = Pattern.compile(String.format(PATTERN_FORMAT, j), Pattern.CASE_INSENSITIVE);
+    public List<Path> find(FileMatcher matcher) {
         return fileGroups.keySet().parallelStream()
                 .filter(matcher::matchFileName)
-                .flatMap(s -> fileGroups.get(s).parallelStream())
-                .filter(matcher::matchFileAttribute)
-                .map(path -> path.toAbsolutePath().toString())
-                .filter(s -> p.matcher(s).matches())
+                .flatMap(s -> fileGroups.get(s).stream())
+                .filter(matcher::matchDirectory)
                 .sorted()
                 .collect(Collectors.toList());
+    }
+
+    public boolean loadFromDisk() {
+        final FileIndex index = FileIndexSerializer.deserializeIndex();
+        if (index != null) {
+            fileGroups = index.getFileGroups();
+            dirs = index.getDirs();
+            return true;
+        }
+        return false;
+    }
+
+    public void saveToDisk() {
+        FileIndexSerializer.serializeIndex(new FileIndex(fileGroups, dirs));
     }
 
 }

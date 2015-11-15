@@ -61,7 +61,7 @@ public final class FileIndexSerializer {
              ObjectSerializer<ConcurrentHashMap> d_serializer = new ObjectSerializer<>(D_INDEX, ConcurrentHashMap.class, index.getDirs(), false)) {
             g_serializer.register(Path.class, new PathSerializer());
             d_serializer.register(IndexedFile.class, new IndexedFileSerializer());
-            System.out.print("\n\nsaving index files ... ");
+            System.out.print("\nsaving index files ... ");
             g_serializer.flushToDisk();
             d_serializer.flushToDisk();
             final Preferences preferences = Preferences.userNodeForPackage(FileIndexSerializer.class);

@@ -1,15 +1,16 @@
 package com.file.search;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * @author ahmad
  */
 public interface FileMatcher {
 
-    String getPattern();
+    String getName();
 
-    void setPattern(String query);
+    void setName(String name);
 
     boolean isHiddenFilesIncluded();
 
@@ -19,8 +20,12 @@ public interface FileMatcher {
 
     void setCaseInsensitive(boolean caseSensitive);
 
+    List<Path> getBaseDirectories();
+
+    void setBaseDirectories(List<Path> baseDirectories);
+
     boolean matchFileName(String fileName);
 
-    boolean matchFileAttribute(Path path);
+    boolean matchDirectory(Path path);
 
 }

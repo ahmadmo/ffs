@@ -28,6 +28,7 @@ public final class FileCrawler {
     public FileCrawler(FileIndexer indexer, long updateIntervalMillis) {
         this.indexer = indexer;
         this.updateIntervalMillis = updateIntervalMillis;
+        Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
     }
 
     private static long getLastModified(Path path) {

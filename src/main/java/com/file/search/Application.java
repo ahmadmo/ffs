@@ -22,6 +22,8 @@ public final class Application {
     private static final String OPT_A = "a";
     private static final String OPT_H = "h";
     private static final String OPT_I = "i";
+    private static final String OPT_LOAD = "load";
+    private static final String OPT_SAVE = "save";
     private static final String OPT_HELP = "help";
 
     public static void main(String[] args) throws Exception {
@@ -40,11 +42,13 @@ public final class Application {
         options.addOption(OPT_A, "append to output file");
         options.addOption(OPT_H, "include hidden files");
         options.addOption(OPT_I, "case insensitive search");
+        options.addOption(OPT_LOAD, "load index files");
+        options.addOption(OPT_SAVE, "save index files");
         options.addOption(OPT_HELP, "help");
         final FileIndexer indexer = new FileIndexer();
         final List<Path> baseDirs = new ArrayList<>();
         while (!Thread.currentThread().isInterrupted()) {
-            System.out.print(" > ");
+            System.out.print("> ");
             String input = console.nextLine();
             if (input == null) {
                 break;
@@ -54,6 +58,16 @@ public final class Application {
                 cli = parser.parse(options, translateCommandline(input));
             } catch (Throwable e) {
                 System.err.printf("%ninvalid command. (due to : %s)%n%n", e.getCause());
+                continue;
+            }
+            if (cli.hasOption(OPT_LOAD)) {
+                if (!indexer.loadFromDisk()) {
+                    System.err.println("\nno index files found.\n");
+                }
+                continue;
+            }
+            if (cli.hasOption(OPT_SAVE)) {
+                indexer.saveToDisk();
                 continue;
             }
             if (cli.hasOption(OPT_HELP)) {
@@ -99,7 +113,8 @@ public final class Application {
                 listener = new DefaultSearchListener();
             }
             final FileMatcher matcher = new DefaultFileMatcher();
-            matcher.setPattern(p);
+            matcher.setName(p);
+            matcher.setBaseDirectories(baseDirs);
             if (cli.hasOption(OPT_H)) {
                 matcher.setHiddenFilesIncluded(true);
             }
