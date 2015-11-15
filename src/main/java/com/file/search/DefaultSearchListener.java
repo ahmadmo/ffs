@@ -6,7 +6,7 @@ import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.file.search.util.TimeUtil.normalizeFormat;
+import static com.file.search.util.TimeUtils.normalizeFormat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**

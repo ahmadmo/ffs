@@ -1,6 +1,9 @@
 package com.file.search;
 
-import java.io.File;
+import com.file.search.util.FileUtils;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
@@ -14,22 +17,22 @@ public final class SearchProcess {
 
     public static final int DEFAULT_PARALLELISM = Runtime.getRuntime().availableProcessors();
 
-    private final File[] dirs;
-    private final Consumer<File> action;
+    private final Iterable<Path> dirs;
+    private final Consumer<Path> action;
     private final ForkJoinPool pool;
 
-    public SearchProcess(File[] dirs, Consumer<File> action) {
+    public SearchProcess(Iterable<Path> dirs, Consumer<Path> action) {
         this(dirs, action, DEFAULT_PARALLELISM);
     }
 
-    public SearchProcess(File[] dirs, Consumer<File> action, int parallelism) {
+    public SearchProcess(Iterable<Path> dirs, Consumer<Path> action, int parallelism) {
         this.dirs = dirs;
         this.action = action;
         pool = new ForkJoinPool(parallelism);
     }
 
     public void doProcess() {
-        for (File dir : dirs) {
+        for (Path dir : dirs) {
             pool.invoke(new FolderProcessor(dir));
         }
         pool.shutdown();
@@ -37,28 +40,27 @@ public final class SearchProcess {
 
     private final class FolderProcessor extends RecursiveAction {
 
-        private final File dir;
+        private static final long serialVersionUID = -6084708633762147774L;
 
-        private FolderProcessor(File dir) {
+        private final Path dir;
+
+        private FolderProcessor(Path dir) {
             this.dir = dir;
         }
 
         @Override
         protected void compute() {
             action.accept(dir);
-            final File[] files = dir.listFiles();
-            if (files != null) {
-                final List<RecursiveAction> actions = new ArrayList<>();
-                for (File file : files) {
-                    if (file.isDirectory()) {
-                        actions.add(new FolderProcessor(file));
-                    } else {
-                        action.accept(file);
-                    }
+            final List<RecursiveAction> actions = new ArrayList<>();
+            FileUtils.forEachEntry(dir, path -> {
+                if (Files.isDirectory(path)) {
+                    actions.add(new FolderProcessor(path));
+                } else {
+                    action.accept(path);
                 }
-                invokeAll(actions);
-                actions.clear();
-            }
+            });
+            invokeAll(actions);
+            actions.clear();
         }
 
     }

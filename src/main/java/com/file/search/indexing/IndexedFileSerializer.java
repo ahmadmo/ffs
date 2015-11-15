@@ -5,7 +5,7 @@ import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
-import java.io.File;
+import java.nio.file.Paths;
 
 import static com.file.search.indexing.IndexedFile.index;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -18,14 +18,14 @@ public final class IndexedFileSerializer extends Serializer<IndexedFile> {
     @Override
     public void write(Kryo kryo, Output output, IndexedFile indexedFile) {
         Long lastModified = indexedFile.getLastModified();
-        kryo.writeObject(output, concat(toByteArray(lastModified == null ? 0L : lastModified), indexedFile.getFile().getAbsolutePath().getBytes(UTF_8)));
+        kryo.writeObject(output, concat(toByteArray(lastModified == null ? 0L : lastModified), indexedFile.toString().getBytes(UTF_8)));
     }
 
     @Override
     public IndexedFile read(Kryo kryo, Input input, Class<IndexedFile> aClass) {
         byte[] bytes = kryo.readObject(input, byte[].class);
         long lastModified = fromByteArray(bytes);
-        return index(new File(new String(bytes, 8, bytes.length - 8, UTF_8)), lastModified == 0L ? null : lastModified);
+        return index(Paths.get(new String(bytes, 8, bytes.length - 8, UTF_8)), lastModified == 0L ? null : lastModified);
     }
 
     private static byte[] toByteArray(long value) {

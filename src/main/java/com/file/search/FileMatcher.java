@@ -1,6 +1,6 @@
 package com.file.search;
 
-import java.io.File;
+import java.nio.file.Path;
 
 /**
  * @author ahmad
@@ -21,6 +21,6 @@ public interface FileMatcher {
 
     boolean matchFileName(String fileName);
 
-    boolean matchFileAttribute(File file);
+    boolean matchFileAttribute(Path path);
 
 }

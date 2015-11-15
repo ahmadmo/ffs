@@ -1,6 +1,10 @@
 package com.file.search.indexing;
 
-import java.io.File;
+import com.file.search.util.FileUtils;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
@@ -24,6 +28,14 @@ public final class FileCrawler {
     public FileCrawler(FileIndexer indexer, long updateIntervalMillis) {
         this.indexer = indexer;
         this.updateIntervalMillis = updateIntervalMillis;
+    }
+
+    private static long getLastModified(Path path) {
+        try {
+            return Files.getLastModifiedTime(path).toMillis();
+        } catch (IOException e) {
+            return -1L;
+        }
     }
 
     public void start() {
@@ -56,9 +68,9 @@ public final class FileCrawler {
     }
 
     private void processDir(final IndexedFile dir, final Set<IndexedFile> children) {
-        final File d = dir.getFile();
-        if (d.exists()) {
-            if (d.lastModified() > dir.getLastModified()) {
+        final Path p = dir.getPath();
+        if (Files.exists(p)) {
+            if (getLastModified(p) > dir.getLastModified()) {
                 dir.setLastModified(System.currentTimeMillis());
                 checkUpdates(dir, children);
             }
@@ -69,40 +81,34 @@ public final class FileCrawler {
 
     private void checkUpdates(final IndexedFile dir, final Set<IndexedFile> children) {
         for (IndexedFile child : children) {
-            final File ch = child.getFile();
-            if (!ch.exists() && !ch.isDirectory()) {
-                indexer.removeFile(ch);
+            final Path path = child.getPath();
+            if (!Files.exists(path) && !Files.isDirectory(path)) {
+                indexer.removeFile(path);
             }
         }
-        final File[] files = dir.getFile().listFiles();
-        if (files != null) {
-            for (File file : files) {
-                Long lastModified = indexer.getLastModified(file);
-                if (file.isDirectory()) {
-                    if (lastModified == null) {
-                        newDir(file);
-                    }
-                } else if (lastModified == null) {
-                    indexer.group(file);
-                } else if (file.lastModified() > lastModified) {
-                    indexer.setLastModified(file);
+        FileUtils.forEachEntry(dir.getPath(), path -> {
+            Long lastModified = indexer.getLastModified(path);
+            if (Files.isDirectory(path)) {
+                if (lastModified == null) {
+                    newDir(path);
                 }
+            } else if (lastModified == null) {
+                indexer.group(path);
+            } else if (getLastModified(path) > lastModified) {
+                indexer.setLastModified(path);
             }
-        }
+        });
     }
 
-    private void newDir(final File dir) {
+    private void newDir(final Path dir) {
         indexer.group(dir);
-        final File[] children = dir.listFiles();
-        if (children != null) {
-            for (File child : children) {
-                if (child.isDirectory()) {
-                    newDir(child);
-                } else {
-                    indexer.group(child);
-                }
+        FileUtils.forEachEntry(dir, path -> {
+            if (Files.isDirectory(path)) {
+                newDir(path);
+            } else {
+                indexer.group(path);
             }
-        }
+        });
     }
 
 }

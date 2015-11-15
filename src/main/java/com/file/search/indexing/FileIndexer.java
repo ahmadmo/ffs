@@ -3,7 +3,9 @@ package com.file.search.indexing;
 import com.file.search.FileMatcher;
 import com.file.search.SearchProcess;
 
-import java.io.File;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
@@ -11,7 +13,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.file.search.indexing.IndexedFile.index;
-import static com.file.search.util.RegexUtil.escape;
+import static com.file.search.util.RegexUtils.escape;
 
 /**
  * @author ahmad
@@ -23,7 +25,7 @@ public final class FileIndexer {
 
     private final FileCrawler crawler;
 
-    private ConcurrentHashMap<String, Set<File>> fileGroups;
+    private ConcurrentHashMap<String, Set<Path>> fileGroups;
     private ConcurrentHashMap<IndexedFile, Set<IndexedFile>> dirs;
 
     public FileIndexer() {
@@ -31,9 +33,14 @@ public final class FileIndexer {
         init();
     }
 
+    private static String name(Path path) {
+        Path name = path.getFileName();
+        return name == null ? "" : name.toString();
+    }
+
     private void init() {
         try {
-            final File[] roots = File.listRoots();
+            final Iterable<Path> roots = FileSystems.getDefault().getRootDirectories();
             Objects.requireNonNull(roots);
             final FileIndex index = FileIndexSerializer.deserializeIndex();
             if (index == null) {
@@ -58,7 +65,7 @@ public final class FileIndexer {
         }
     }
 
-    public void forEachGroup(BiConsumer<String, Set<File>> action) {
+    public void forEachGroup(BiConsumer<String, Set<Path>> action) {
         fileGroups.forEach(action);
     }
 
@@ -66,45 +73,45 @@ public final class FileIndexer {
         dirs.forEach(action);
     }
 
-    public Set<File> getGroup(File file) {
-        return fileGroups.get(file.getName());
+    public Set<Path> getGroup(Path path) {
+        return fileGroups.get(name(path));
     }
 
     public Set<IndexedFile> getChildren(IndexedFile dir) {
         return dirs.get(dir);
     }
 
-    public Long getLastModified(File file) {
-        return index(file).getLastModified();
+    public Long getLastModified(Path path) {
+        return index(path).getLastModified();
     }
 
-    public void setLastModified(File file) {
-        index(file, System.currentTimeMillis());
+    public void setLastModified(Path path) {
+        index(path, System.currentTimeMillis());
     }
 
-    public void group(File file) {
+    public void group(Path file) {
         groupName(file);
         groupChildren(file);
     }
 
-    private void groupName(File file) {
-        final String fileName = file.getName();
-        Set<File> group = fileGroups.get(fileName);
+    private void groupName(Path path) {
+        final String fileName = name(path);
+        Set<Path> group = fileGroups.get(fileName);
         if (group == null) {
-            final Set<File> g = fileGroups.putIfAbsent(fileName, group = new SetFromMap<>());
+            final Set<Path> g = fileGroups.putIfAbsent(fileName, group = new SetFromMap<>());
             if (g != null) {
                 group = g;
             }
         }
-        group.add(file);
+        group.add(path);
     }
 
-    private void groupChildren(File file) {
-        final IndexedFile indexedFile = index(file, System.currentTimeMillis());
-        if (file.isDirectory() && !dirs.containsKey(indexedFile)) {
+    private void groupChildren(Path path) {
+        final IndexedFile indexedFile = index(path, System.currentTimeMillis());
+        if (Files.isDirectory(path) && !dirs.containsKey(indexedFile)) {
             dirs.put(indexedFile, new SetFromMap<>());
         }
-        final File parent = file.getParentFile();
+        final Path parent = path.getParent();
         if (parent != null) {
             final IndexedFile p = index(parent);
             Set<IndexedFile> children = dirs.get(p);
@@ -118,24 +125,24 @@ public final class FileIndexer {
         }
     }
 
-    public void removeFile(File file) {
-        removeGroup(file);
-        removeChildren(file);
+    public void removeFile(Path path) {
+        removeGroup(path);
+        removeChildren(path);
     }
 
-    private void removeGroup(File file) {
-        final Set<File> group = fileGroups.get(file.getName());
+    private void removeGroup(Path path) {
+        final Set<Path> group = fileGroups.get(name(path));
         if (group != null) {
-            group.remove(file);
+            group.remove(path);
         }
     }
 
-    private void removeChildren(File file) {
-        final File parent = file.getParentFile();
+    private void removeChildren(Path path) {
+        final Path parent = path.getParent();
         if (parent != null) {
             final Set<IndexedFile> children = dirs.get(index(parent));
             if (children != null) {
-                children.remove(index(file));
+                children.remove(index(path));
             }
         }
     }
@@ -144,30 +151,30 @@ public final class FileIndexer {
         final Set<IndexedFile> children = dirs.remove(dir);
         if (children != null) {
             for (IndexedFile child : children) {
-                if (child.getFile().isDirectory()) {
+                if (Files.isDirectory(child.getPath())) {
                     removeDir(child);
                 } else {
-                    removeFile(child.getFile());
+                    removeFile(child.getPath());
                 }
             }
         }
-        removeFile(dir.getFile());
+        removeFile(dir.getPath());
     }
 
-    public List<String> find(FileMatcher matcher, File... baseDirs) {
-        if (baseDirs == null || baseDirs.length == 0) {
+    public List<String> find(FileMatcher matcher, List<Path> baseDirs) {
+        if (baseDirs == null || baseDirs.isEmpty()) {
             return Collections.emptyList();
         }
         final StringJoiner j = new StringJoiner(DIR_DELIMITER);
-        for (File dir : baseDirs) {
-            j.add(escape(dir.getAbsolutePath()));
+        for (Path dir : baseDirs) {
+            j.add(escape(dir.toString()));
         }
         final Pattern p = Pattern.compile(String.format(PATTERN_FORMAT, j), Pattern.CASE_INSENSITIVE);
         return fileGroups.keySet().parallelStream()
                 .filter(matcher::matchFileName)
                 .flatMap(s -> fileGroups.get(s).parallelStream())
                 .filter(matcher::matchFileAttribute)
-                .map(File::getAbsolutePath)
+                .map(path -> path.toAbsolutePath().toString())
                 .filter(s -> p.matcher(s).matches())
                 .sorted()
                 .collect(Collectors.toList());

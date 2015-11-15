@@ -5,6 +5,7 @@ import com.file.search.util.serialization.ObjectSerializer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,7 +18,7 @@ import static com.file.search.util.serialization.Checksum.createChecksum;
  */
 public final class FileIndexSerializer {
 
-    private static final String INDEX_LOCATION = System.getProperty("user.home") + File.separator + ".ffs/";
+    private static final String INDEX_LOCATION = System.getProperty("user.home") + File.separator + ".ffs" + File.separator;
     private static final String G_INDEX = INDEX_LOCATION + "g_index.ser";
     private static final String D_INDEX = INDEX_LOCATION + "d_index.ser";
 
@@ -40,7 +41,7 @@ public final class FileIndexSerializer {
             if (Objects.equals(createChecksum(G_INDEX), g_hash) && Objects.equals(createChecksum(D_INDEX), d_hash)) {
                 try (ObjectSerializer<ConcurrentHashMap> g_serializer = new ObjectSerializer<>(G_INDEX, ConcurrentHashMap.class, false);
                      ObjectSerializer<ConcurrentHashMap> d_serializer = new ObjectSerializer<>(D_INDEX, ConcurrentHashMap.class, false)) {
-                    g_serializer.register(File.class, new FileSerializer());
+                    g_serializer.register(Path.class, new PathSerializer());
                     d_serializer.register(IndexedFile.class, new IndexedFileSerializer());
                     System.out.print("\nloading index files ... ");
                     @SuppressWarnings("unchecked")
@@ -58,7 +59,7 @@ public final class FileIndexSerializer {
     public static void serializeIndex(final FileIndex index) {
         try (ObjectSerializer<ConcurrentHashMap> g_serializer = new ObjectSerializer<>(G_INDEX, ConcurrentHashMap.class, index.getFileGroups(), false);
              ObjectSerializer<ConcurrentHashMap> d_serializer = new ObjectSerializer<>(D_INDEX, ConcurrentHashMap.class, index.getDirs(), false)) {
-            g_serializer.register(File.class, new FileSerializer());
+            g_serializer.register(Path.class, new PathSerializer());
             d_serializer.register(IndexedFile.class, new IndexedFileSerializer());
             System.out.print("\n\nsaving index files ... ");
             g_serializer.flushToDisk();

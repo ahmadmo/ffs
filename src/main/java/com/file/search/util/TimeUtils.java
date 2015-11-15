@@ -7,9 +7,9 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 /**
  * @author ahmad
  */
-public final class TimeUtil {
+public final class TimeUtils {
 
-    private TimeUtil() {
+    private TimeUtils() {
     }
 
     public static String normalizeFormat(long time, TimeUnit unit) {

@@ -3,12 +3,13 @@ package com.file.search;
 import com.file.search.indexing.FileIndexer;
 import org.apache.commons.cli.*;
 
-import java.io.Console;
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.StringTokenizer;
 
 /**
@@ -24,11 +25,12 @@ public final class Application {
     private static final String OPT_HELP = "help";
 
     public static void main(String[] args) throws Exception {
-        final Console console = System.console();
-        if (console == null) {
-            System.err.println("Console not supported!");
-            System.exit(1);
-        }
+//        final Console console = System.console();
+//        if (console == null) {
+//            System.err.println("Console not supported!");
+//            System.exit(1);
+//        }
+        Scanner console = new Scanner(System.in);
         final CommandLineParser parser = new DefaultParser();
         final Options options = new Options();
         final Option d = new Option(OPT_D, true, "base dir(s)");
@@ -40,10 +42,10 @@ public final class Application {
         options.addOption(OPT_I, "case insensitive search");
         options.addOption(OPT_HELP, "help");
         final FileIndexer indexer = new FileIndexer();
-        final List<File> baseDirs = new ArrayList<>();
+        final List<Path> baseDirs = new ArrayList<>();
         while (!Thread.currentThread().isInterrupted()) {
             System.out.print(" > ");
-            String input = console.readLine();
+            String input = console.nextLine();
             if (input == null) {
                 break;
             }
@@ -70,9 +72,9 @@ public final class Application {
             }
             String[] values = cli.getOptionValues(OPT_D);
             for (String value : values) {
-                File dir = new File(value.trim());
-                if (dir.exists() && dir.isDirectory()) {
-                    baseDirs.add(dir);
+                Path path = Paths.get(value.trim()).toAbsolutePath();
+                if (Files.exists(path) && Files.isDirectory(path)) {
+                    baseDirs.add(path);
                 }
             }
             if (baseDirs.isEmpty()) {
@@ -105,10 +107,11 @@ public final class Application {
                 matcher.setCaseInsensitive(true);
             }
             System.out.println();
-            FileSearch.search(indexer, matcher, listener, baseDirs.toArray(new File[baseDirs.size()]));
+            FileSearch.search(indexer, matcher, listener, baseDirs);
             System.out.println();
             baseDirs.clear();
         }
+        console.close();
         System.exit(0);
     }
 

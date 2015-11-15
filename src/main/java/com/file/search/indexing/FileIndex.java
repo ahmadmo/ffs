@@ -1,6 +1,6 @@
 package com.file.search.indexing;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -9,15 +9,15 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class FileIndex {
 
-    private final ConcurrentHashMap<String, Set<File>> fileGroups;
+    private final ConcurrentHashMap<String, Set<Path>> fileGroups;
     private final ConcurrentHashMap<IndexedFile, Set<IndexedFile>> dirs;
 
-    public FileIndex(ConcurrentHashMap<String, Set<File>> fileGroups, ConcurrentHashMap<IndexedFile, Set<IndexedFile>> dirs) {
+    public FileIndex(ConcurrentHashMap<String, Set<Path>> fileGroups, ConcurrentHashMap<IndexedFile, Set<IndexedFile>> dirs) {
         this.fileGroups = fileGroups;
         this.dirs = dirs;
     }
 
-    public ConcurrentHashMap<String, Set<File>> getFileGroups() {
+    public ConcurrentHashMap<String, Set<Path>> getFileGroups() {
         return fileGroups;
     }
 

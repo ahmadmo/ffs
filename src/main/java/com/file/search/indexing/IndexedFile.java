@@ -1,7 +1,7 @@
 package com.file.search.indexing;
 
-import java.io.File;
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -11,23 +11,23 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 public final class IndexedFile implements Cloneable, Serializable {
 
-    private static final long serialVersionUID = 2366750191119019642L;
+    private static final long serialVersionUID = 7725700949544758581L;
 
     private static final Map<Integer, IndexedFile> CACHE = new ConcurrentHashMap<>();
 
-    private final File file;
+    private final Path path;
     private volatile Long lastModified;
 
     private final AtomicReferenceFieldUpdater<IndexedFile, Long> lastModifiedUpdater
             = AtomicReferenceFieldUpdater.newUpdater(IndexedFile.class, Long.class, "lastModified");
 
-    private IndexedFile(File file, Long lastModified) {
-        this.file = file;
+    private IndexedFile(Path path, Long lastModified) {
+        this.path = path;
         this.lastModified = lastModified;
     }
 
-    public File getFile() {
-        return file;
+    public Path getPath() {
+        return path;
     }
 
     public Long getLastModified() {
@@ -40,34 +40,28 @@ public final class IndexedFile implements Cloneable, Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        return this == obj || obj != null && obj instanceof IndexedFile && file.equals(((IndexedFile) obj).file);
+        return this == obj || obj != null && obj instanceof IndexedFile && path.equals(((IndexedFile) obj).path);
     }
 
     @Override
     public int hashCode() {
-        return file.hashCode();
+        return path.hashCode();
     }
 
     @Override
-    protected IndexedFile clone() {
-        IndexedFile clone = null;
-        try {
-            clone = (IndexedFile) super.clone();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return clone;
+    public String toString() {
+        return path.toString();
     }
 
-    public static IndexedFile index(File file) {
-        return index(file, null);
+    public static IndexedFile index(Path path) {
+        return index(path, null);
     }
 
-    public static IndexedFile index(File file, Long lastModified) {
-        final int hash = file.hashCode();
+    public static IndexedFile index(Path path, Long lastModified) {
+        final int hash = path.hashCode();
         IndexedFile indexedFile = CACHE.get(hash);
         if (indexedFile == null) {
-            final IndexedFile i = CACHE.putIfAbsent(hash, indexedFile = new IndexedFile(file, lastModified));
+            final IndexedFile i = CACHE.putIfAbsent(hash, indexedFile = new IndexedFile(path, lastModified));
             if (i != null) {
                 indexedFile = i;
             }

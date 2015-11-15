@@ -1,10 +1,12 @@
 package com.file.search;
 
-import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-import static com.file.search.util.RegexUtil.escape;
+import static com.file.search.util.RegexUtils.escape;
 
 /**
  * @author ahmad
@@ -54,8 +56,16 @@ public final class DefaultFileMatcher implements FileMatcher {
     }
 
     @Override
-    public boolean matchFileAttribute(File file) {
-        return file.canRead() && (hiddenFilesIncluded || !file.isHidden());
+    public boolean matchFileAttribute(Path path) {
+        return Files.isReadable(path) && (hiddenFilesIncluded || !isHidden(path));
+    }
+
+    private static boolean isHidden(Path path) {
+        try {
+            return Files.isHidden(path);
+        } catch (IOException e) {
+            return false;
+        }
     }
 
 }
