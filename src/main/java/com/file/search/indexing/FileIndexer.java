@@ -84,7 +84,7 @@ public final class FileIndexer {
         return dirs.get(dir);
     }
 
-    public Long getLastModified(Path path) {
+    public long getLastModified(Path path) {
         return IndexedFile.index(path).getLastModified();
     }
 

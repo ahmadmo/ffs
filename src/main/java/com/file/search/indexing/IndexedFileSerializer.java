@@ -15,19 +15,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public final class IndexedFileSerializer extends Serializer<IndexedFile> {
 
-    @Override
-    public void write(Kryo kryo, Output output, IndexedFile indexedFile) {
-        Long lastModified = indexedFile.getLastModified();
-        kryo.writeObject(output, concat(toByteArray(lastModified == null ? 0L : lastModified), indexedFile.toString().getBytes(UTF_8)));
-    }
-
-    @Override
-    public IndexedFile read(Kryo kryo, Input input, Class<IndexedFile> aClass) {
-        byte[] bytes = kryo.readObject(input, byte[].class);
-        long lastModified = fromByteArray(bytes);
-        return index(Paths.get(new String(bytes, 8, bytes.length - 8, UTF_8)), lastModified == 0L ? null : lastModified);
-    }
-
     private static byte[] toByteArray(long value) {
         byte[] result = new byte[8];
         for (int i = 7; i >= 0; i--) {
@@ -53,6 +40,17 @@ public final class IndexedFileSerializer extends Serializer<IndexedFile> {
         System.arraycopy(a, 0, c, 0, a.length);
         System.arraycopy(b, 0, c, a.length, b.length);
         return c;
+    }
+
+    @Override
+    public void write(Kryo kryo, Output output, IndexedFile indexedFile) {
+        kryo.writeObject(output, concat(toByteArray(indexedFile.getLastModified()), indexedFile.toString().getBytes(UTF_8)));
+    }
+
+    @Override
+    public IndexedFile read(Kryo kryo, Input input, Class<IndexedFile> aClass) {
+        byte[] bytes = kryo.readObject(input, byte[].class);
+        return index(Paths.get(new String(bytes, 8, bytes.length - 8, UTF_8)), fromByteArray(bytes));
     }
 
 }

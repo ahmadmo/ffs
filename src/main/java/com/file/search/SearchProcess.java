@@ -15,7 +15,7 @@ import java.util.function.Consumer;
  */
 public final class SearchProcess {
 
-    public static final int DEFAULT_PARALLELISM = Runtime.getRuntime().availableProcessors() * 2;
+    public static final int DEFAULT_PARALLELISM = 2;
 
     private final Iterable<Path> dirs;
     private final Consumer<Path> action;
@@ -33,7 +33,9 @@ public final class SearchProcess {
 
     public void doProcess() {
         for (Path dir : dirs) {
-            pool.invoke(new FolderProcessor(dir));
+            if (Files.isReadable(dir)) {
+                pool.invoke(new FolderProcessor(dir));
+            }
         }
         pool.shutdown();
     }

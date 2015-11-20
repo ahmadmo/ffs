@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  */
 public final class FileSearch {
 
-    private static final String PATTERN_FORMAT = "\\b%s.*";
+    private static final String PATTERN_FORMAT = "^%s.*";
 
     private FileSearch() {
     }

@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  */
 public final class DefaultFileMatcher implements FileMatcher {
 
-    private static final String PATTERN_FORMAT = "\\b(%s).*";
+    private static final String PATTERN_FORMAT = "^(%s).*";
     private static final String DIR_DELIMITER = "|";
 
     private String name;

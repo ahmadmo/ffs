@@ -14,7 +14,7 @@ import java.util.function.BiConsumer;
  */
 public final class FileCrawler {
 
-    public static final long DEFAULT_UPDATE_INTERVAL_MILLIS = 2000L;
+    public static final long DEFAULT_UPDATE_INTERVAL_MILLIS = 5000L;
 
     private final FileIndexer indexer;
     private final long updateIntervalMillis;
@@ -88,12 +88,12 @@ public final class FileCrawler {
             }
         }
         FileUtils.forEachEntry(dir.getPath(), path -> {
-            Long lastModified = indexer.getLastModified(path);
+            long lastModified = indexer.getLastModified(path);
             if (Files.isDirectory(path)) {
-                if (lastModified == null) {
+                if (lastModified == 0L) {
                     newDir(path);
                 }
-            } else if (lastModified == null) {
+            } else if (lastModified == 0L) {
                 indexer.group(path);
             } else if (getLastModified(path) > lastModified) {
                 indexer.setLastModified(path);
